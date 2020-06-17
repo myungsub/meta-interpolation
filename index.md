@@ -2,9 +2,9 @@
 layout: default
 ---
 
-#### Myungsub Choi, Janghoon Choi, Sungyong Baik, Tae Hyun Kim, Kyoung Mu Lee
+#### [Myungsub Choi](https://myungsub.github.io), Janghoon Choi, Sungyong Baik, Tae Hyun Kim, Kyoung Mu Lee
 
-[Project](https://myungsub.github.io/meta-interpolation) | [Paper](https://arxiv.org/abs/2004.00779)
+[Project](https://myungsub.github.io/meta-interpolation) | [Paper-CVF](http://openaccess.thecvf.com/content_CVPR_2020/papers/Choi_Scene-Adaptive_Video_Frame_Interpolation_via_Meta-Learning_CVPR_2020_paper.pdf) | [Paper-ArXiv](https://arxiv.org/abs/2004.00779) | [Supp](http://openaccess.thecvf.com/content_CVPR_2020/supplemental/Choi_Scene-Adaptive_Video_Frame_CVPR_2020_supplemental.zip)
 
 <a href="https://arxiv.org/abs/2004.00779" rel="Video"><img src="./figures/SAVFI_paper_thumb.jpg" alt="Paper" width="100%"></a>
 
@@ -64,3 +64,6 @@ If you find this code useful for your research, please consider citing the follo
 The main structure of this code is based on [MAML++](https://github.com/AntreasAntoniou/HowToTrainYourMAMLPytorch).
 Training scripts for each of the frame interpolation method is adopted from: [[DVF](https://github.com/lxx1991/pytorch-voxel-flow)], [[SuperSloMo](https://github.com/avinashpaliwal/Super-SloMo)], [[SepConv](https://github.com/sniklaus/sepconv-slomo)], [[DAIN](https://github.com/baowenbo/DAIN)], [[CAIN](https://github.com/myungsub/CAIN)]
 We thank the authors for sharing the codes for their great works.
+
+---
+For further questions, please contact [@myungsub](https://myungsub.github.io)
