@@ -2,7 +2,7 @@
 layout: default
 ---
 
-#### [Myungsub Choi](https://myungsub.github.io), Janghoon Choi, Sungyong Baik, Tae Hyun Kim, Kyoung Mu Lee
+#### [Myungsub Choi](https://myungsub.github.io), [Janghoon Choi](https://scholar.google.com/citations?user=Y9JkA2IAAAAJ&hl=ko), [Sungyong Baik](https://scholar.google.com/citations?user=lQ4gotkAAAAJ&hl=en), [Tae Hyun Kim](https://sites.google.com/site/lliger9/), [Kyoung Mu Lee](https://cv.snu.ac.kr/index.php/~kmlee/)
 
 [Project](https://myungsub.github.io/meta-interpolation) | [Paper-CVF](http://openaccess.thecvf.com/content_CVPR_2020/papers/Choi_Scene-Adaptive_Video_Frame_Interpolation_via_Meta-Learning_CVPR_2020_paper.pdf) | [Paper-ArXiv](https://arxiv.org/abs/2004.00779) | [Supp](http://openaccess.thecvf.com/content_CVPR_2020/supplemental/Choi_Scene-Adaptive_Video_Frame_CVPR_2020_supplemental.zip)
 
