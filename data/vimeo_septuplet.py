@@ -22,11 +22,11 @@ class VimeoSeptuplet(Dataset):
 
         self.batch_size = {'train': args.batch_size, 'val': args.val_batch_size, 'test': args.test_batch_size}
         self.crop_size = 256
-        self.frames = [1, 2, 3, 4, 5, 6, 7] # args.frames
+        self.frames = [1, 2, 3, 4, 5, 6, 7]
 
-        self.current_set_name = "train" if args.mode == 'train' else 'test'
+        self.current_set_name = "train" if args.mode == 'train' else 'val'
 
-        self.data_length = {'train': len(self.trainlist), 'val': 0, 'test': len(self.testlist)}
+        self.data_length = {'train': len(self.trainlist), 'val': len(self.testlist), 'test': 0}
 
         if args.model == 'superslomo':
             print('SuperSloMo normalization')

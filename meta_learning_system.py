@@ -8,7 +8,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import transforms
 
-from inner_loop_optimizers import LSLRGradientDescentLearningRule
+from inner_loop_optimizers import LSLRGradientDescentLearningRule, MetaSGDLearningRule
 from loss import Loss
 import utils
 
@@ -71,11 +71,17 @@ class SceneAdaptiveInterpolation(nn.Module):
             raise NotImplementedError('Model not implemented yet!')
 
         self.inner_learning_rate = args.inner_lr
-        self.inner_loop_optimizer = LSLRGradientDescentLearningRule(device=self.device,
-                                                                    optimizer=self.args.optimizer, #'Adamax',
-                                                                    init_learning_rate=self.inner_learning_rate,
-                                                                    total_num_inner_loop_steps=self.args.number_of_training_steps_per_iter,
-                                                                    use_learnable_learning_rates=self.args.learnable_per_layer_per_step_inner_loop_learning_rate)
+        if self.args.metasgd:
+            print('Adaptation with Meta-SGD')
+            self.inner_loop_optimizer = MetaSGDLearningRule(device=self.device,
+                                                            optimizer=self.args.optimizer,
+                                                            init_learning_rate=self.inner_learning_rate)
+        else:
+            self.inner_loop_optimizer = LSLRGradientDescentLearningRule(device=self.device,
+                                                                        optimizer=self.args.optimizer, #'Adamax',
+                                                                        init_learning_rate=self.inner_learning_rate,
+                                                                        total_num_inner_loop_steps=self.args.number_of_training_steps_per_iter,
+                                                                        use_learnable_learning_rates=self.args.learnable_per_layer_per_step_inner_loop_learning_rate)
         
         names_weights_dict = self.get_inner_loop_parameter_dict(params=self.net.named_parameters())
         self.inner_loop_optimizer.initialize(names_weights_dict=names_weights_dict)
@@ -393,7 +399,11 @@ class SceneAdaptiveInterpolation(nn.Module):
                     task_losses.append(target_loss['total'])
                     self.update_loss_metrics(loss_accumulator, target_loss)
 
-            per_task_target_preds[task_id] = target_preds.detach()  # target_preds.shape: (1, C, H, W)
+            if self.args.model == 'superslomo':
+                per_task_target_preds[task_id] = self.revNormalize(target_preds.detach().squeeze(0)).unsqueeze(0)
+            else:
+                per_task_target_preds[task_id] = target_preds.detach()  # target_preds.shape: (1, C, H, W)
+            
             if do_evaluation:
                 if self.args.model == 'superslomo':
                     output = self.revNormalize(target_preds.squeeze(0))
@@ -401,6 +411,8 @@ class SceneAdaptiveInterpolation(nn.Module):
                 else:
                     output = target_preds.squeeze(0)
                     target = frames[target_idx[1]][task_id]
+                output = output.detach()
+                target = target.detach()
                 psnr, ssim = utils.calc_metrics(output, target)
                 # print(psnr, ssim)
                 metrics['psnr'].update(psnr)

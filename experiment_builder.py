@@ -99,9 +99,34 @@ class ExperimentBuilder(object):
         :return: The updated val_losses, total_losses
         """
         images, metadata = val_sample
-        data_batch = images
 
-        losses, outputs, metrics = self.model.run_validation_iter(data_batch=data_batch)
+        def _eval_iter(frames):
+            H, W = frames[0].shape[-2:]
+            if H * W > 5e5:
+                if H > W:
+                    images_0 = [im[:, :, :H//2, :] for im in frames]
+                    images_1 = [im[:, :, H//2:, :] for im in frames]
+                else:
+                    images_0 = [im[:, :, :, :W//2] for im in frames]
+                    images_1 = [im[:, :, :, W//2:] for im in frames]
+                losses_0, outputs_0, metrics_0 = _eval_iter(images_0)
+                losses_1, outputs_1, metrics_1 = _eval_iter(images_1)
+                outputs = [torch.cat([outputs_0[i], outputs_1[i]], dim=2 if H > W else 3) for i in range(len(outputs_0))]
+                losses = losses_0
+                for k, v in losses_1.items():
+                    losses[k] = (v + losses[k]) / 2
+                    if k == 'loss':
+                        losses[k] = losses[k].detach()
+                metrics = metrics_0
+                for k, v in metrics_1.items():
+                    metrics[k].update(val=v.avg, n=v.count)
+                del losses_0, losses_1, outputs_0, outputs_1, metrics_0, metrics_1
+            else:
+                losses, outputs, metrics = self.model.run_validation_iter(data_batch=frames)
+                losses['loss'] = losses['loss'].detach()
+            return losses, outputs, metrics
+
+        losses, outputs, metrics = _eval_iter(images)
 
         val_output_update = self.build_loss_summary_string(losses, metrics)
 
@@ -151,6 +176,7 @@ class ExperimentBuilder(object):
         Runs a full training experiment with evaluations of the model on the val set at every epoch.
         """
         if self.args.mode == 'test':
+            print('Start testing')
             num_test_tasks = self.data.dataset.data_length['test']
             with tqdm(total=int(num_test_tasks / self.args.test_batch_size)) as pbar_test:
                 for _, test_sample in enumerate(self.data.get_test_batches(total_batches=int(num_test_tasks / self.args.test_batch_size))):
@@ -177,10 +203,11 @@ class ExperimentBuilder(object):
             return
 
         elif self.args.mode == 'val':
+            print('Validation only')
             total_losses = dict()
             val_losses = dict()
             metrics_accumulator = {'psnr': utils.AverageMeter(), 'ssim': utils.AverageMeter()}
-            num_evaluation_tasks = self.data.dataset.data_length['test']
+            num_evaluation_tasks = self.data.dataset.data_length['val']
             with tqdm(total=int(num_evaluation_tasks / self.args.val_batch_size)) as pbar_val:
                 for _, val_sample in enumerate(self.data.get_val_batches(total_batches=int(num_evaluation_tasks / self.args.val_batch_size))):
                     val_losses, outputs, metrics = self.evaluation_iteration(val_sample=val_sample,
@@ -192,13 +219,14 @@ class ExperimentBuilder(object):
                         metrics_accumulator[k].update(v.avg, n=v.count)
 
                     for k in range(batch_size):
-                        paths = val_sample[1]['imgpaths'][k][0].split('/')
+                        paths = val_sample[1]['imgpaths'][3][k].split('/')
                         save_dir = os.path.join('checkpoint', self.args.exp_name, self.args.dataset, paths[-3], paths[-2])
                         if not os.path.exists(save_dir):
                             utils.makedirs(save_dir)
-                        im_path = os.path.join(save_dir, 'im4.png') #paths[-1])
+                        im_path = os.path.join(save_dir, paths[-1]) # 'im4.png' for VimeoSeptuplet
 
                         utils.save_image(outputs[0][k], im_path)
+                    del val_losses, outputs, metrics
 
             print("%d examples processed" % metrics_accumulator['psnr'].count)
             print("PSNR: %.2f,  SSIM: %.4f\n" % (metrics_accumulator['psnr'].avg, metrics_accumulator['ssim'].avg))
@@ -233,19 +261,27 @@ class ExperimentBuilder(object):
                     if self.state['current_iter'] % self.args.total_iter_per_epoch == 0:
 
                         total_losses = dict()
-                        val_losses = dict()
+                        val_losses = {}
                         metrics_accumulator = {'psnr': utils.AverageMeter(), 'ssim': utils.AverageMeter()}
-                        num_evaluation_tasks = self.data.dataset.data_length['test']
+                        num_evaluation_tasks = self.data.dataset.data_length['val']
                         with tqdm(total=int(num_evaluation_tasks / self.args.val_batch_size + 0.99)) as pbar_val:
                             for _, val_sample in enumerate(self.data.get_val_batches(total_batches=int(
                                     num_evaluation_tasks / self.args.val_batch_size + 0.99))):
-                                val_losses, outputs, metrics = self.evaluation_iteration(val_sample=val_sample,
-                                                                                         total_losses=total_losses,
-                                                                                         pbar_val=pbar_val,
-                                                                                         phase='val')
+                                val_loss, outputs, metrics = self.evaluation_iteration(val_sample=val_sample,
+                                                                                       total_losses=total_losses,
+                                                                                       pbar_val=pbar_val,
+                                                                                       phase='val')
                                 for k, v in metrics.items():
                                     metrics_accumulator[k].update(v.avg, n=v.count)
+                                for k, v in val_loss.items():
+                                    if k not in val_losses.keys():
+                                        val_losses[k] = utils.AverageMeter()
+                                    val_losses[k].update(v)
 
+                                del val_loss, outputs, metrics
+
+                            for k, v in val_losses.items():
+                                val_losses[k] = v.avg
                             if val_losses["total"] < self.state['best_val_loss']:
                                 print("Best validation loss", val_losses["total"])
                                 self.state['best_val_loss'] = val_losses["total"]

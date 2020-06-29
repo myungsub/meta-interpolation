@@ -16,6 +16,7 @@ CUDA_VISIBLE_DEVICES=1 python main.py \
     --log_iter 10 \
 #    --mode val \
 #    --pretrained_model pretrained_models/meta_sepconv.pth \
+#    --metasgd
 #    --resume \
 #    --learnable_per_layer_per_step_inner_loop_learning_rate
 #    --second_order

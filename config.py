@@ -17,6 +17,7 @@ data_arg.add_argument('--dataset', type=str, default='vimeo90k')
 data_arg.add_argument('--num_frames', type=int, default=3)
 data_arg.add_argument('--data_root', type=str, default='data/vimeo_septuplet')
 data_arg.add_argument('--img_fmt', type=str, default='png')
+data_arg.add_argument('--fps', type=int, default=30)
 
 # Model
 model_arg = add_argument_group('Model')
@@ -58,6 +59,8 @@ learn_arg.add_argument('--total_iter_per_epoch', type=int, default=10)
 
 # Attenuation option for L2F
 learn_arg.add_argument('--attenuate', action='store_true', help='Option to switch on attenuation module')
+# Parameter-wise learnable learning rate option for MetaSGD
+learn_arg.add_argument('--metasgd', action='store_true', help='Option to change basic MAML to MetaSGD')
 
 # Misc
 misc_arg = add_argument_group('Misc')
