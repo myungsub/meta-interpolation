@@ -517,6 +517,7 @@ class FewShotLearningDatasetParallel(Dataset):
 
 
 from data.vimeo_septuplet import VimeoSeptuplet
+from data.video import Video
 
 class MetaLearningSystemDataLoader(object):
     def __init__(self, args, current_iter=0):
@@ -532,7 +533,10 @@ class MetaLearningSystemDataLoader(object):
         # self.samples_per_iter = args.samples_per_iter
         self.num_workers = args.num_workers
         self.total_train_iters_produced = 0
-        self.dataset = VimeoSeptuplet(args=args) #FewShotLearningDatasetParallel(args=args)
+        if args.dataset == 'vimeo90k':
+            self.dataset = VimeoSeptuplet(args=args) #FewShotLearningDatasetParallel(args=args)
+        elif args.dataset == 'test':
+            self.dataset = Video(args=args)
         # self.batches_per_iter = args.samples_per_iter
         self.full_data_length = self.dataset.data_length
         self.continue_from_iter(current_iter=current_iter)

@@ -8,12 +8,10 @@ from PIL import Image
 import random
 
 class VimeoSeptuplet(Dataset):
-    def __init__(self, args): #data_root, frames, is_training):
+    def __init__(self, args):
         self.args = args
         self.data_root = args.data_root # 'data/vimeo_septuplet'
         self.image_root = os.path.join(self.data_root, 'sequences')
-
-        # self.training = is_training
         
         train_fn = os.path.join(self.data_root, 'sep_trainlist.txt')
         test_fn = os.path.join(self.data_root, 'sep_testlist.txt')
@@ -28,10 +26,6 @@ class VimeoSeptuplet(Dataset):
 
         self.current_set_name = "train" if args.mode == 'train' else 'test'
 
-        self.train_index = 0
-        self.val_index = 0
-        self.test_index = 0
-        # self.seed = {"train": args.train_seed, "val": args.val_seed, 'test': args.val_seed}
         self.data_length = {'train': len(self.trainlist), 'val': 0, 'test': len(self.testlist)}
 
         if args.model == 'superslomo':
@@ -40,10 +34,8 @@ class VimeoSeptuplet(Dataset):
             std  = [1, 1, 1]
             self.normalize = transforms.Normalize(mean=mean, std=std)
 
+
     def __getitem__(self, index):
-        # print(len(self.trainlist))
-        # print('%s idx: %d' % (self.current_set_name, index))
-        # print(self.trainlist[index])
 
         if self.current_set_name == 'train':
             imgpath = os.path.join(self.image_root, self.trainlist[index % len(self.trainlist)])
@@ -84,26 +76,6 @@ class VimeoSeptuplet(Dataset):
     def switch_set(self, set_name, current_iter=None):
         self.current_set_name = set_name
 
-    # def update_seed(self, dataset_name, seed=100):
-    #     self.seed[dataset_name] = seed
-
 
     def __len__(self):
-        # if self.current_set_name == 'train':
-        #     return len(self.trainlist)
-        # else:
-        #     return len(self.testlist)
-        # return 0
         return self.data_length[self.current_set_name]
-        
-
-
-def get_loader(mode, data_root, batch_size, shuffle, num_workers, test_mode=None):
-    if mode == 'train':
-        is_training = True
-    else:
-        is_training = False
-    
-    dataset = VimeoSeptuplet(data_root, frames=[1, 2, 3, 4, 5, 6, 7], is_training=is_training)
-
-    return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=True)

@@ -111,6 +111,34 @@ class ExperimentBuilder(object):
         return losses, outputs, metrics
 
 
+    def test_iteration(self, test_sample, pbar_test, phase):
+        """
+        Runs a test iteration, updates the progress bar and returns the outputs.
+        :param test_sample: A sample from the data provider
+        :param pbar_test: The progress bar of the test stage.
+        :return: The output interpolation
+        """
+        images, _ = test_sample
+        H, W = images[0].shape[-2:]
+        if H * W > 5e5:
+            if H > W:
+                images_0 = [im[:, :, :H//2, :] for im in images]
+                images_1 = [im[:, :, H//2:, :] for im in images]
+            else:
+                images_0 = [im[:, :, :, :W//2] for im in images]
+                images_1 = [im[:, :, :, W//2:] for im in images]
+            outputs_0 = self.model.run_test_iter(data_batch=images_0)
+            outputs_1 = self.model.run_test_iter(data_batch=images_1)
+            outputs = [torch.cat([outputs_0[i], outputs_1[i]], dim=1 if H > W else 2) for i in range(len(outputs_0))]
+        else:
+            outputs = self.model.run_test_iter(data_batch=images)
+
+        pbar_test.update(1)
+        # pbar_test.set_description("test_phase -> {}".format(test_output_update))
+
+        return outputs
+
+
     def evaluate_middlebury(self):
         """
         Runs evaluation on Middlebury dataset
@@ -123,6 +151,32 @@ class ExperimentBuilder(object):
         Runs a full training experiment with evaluations of the model on the val set at every epoch.
         """
         if self.args.mode == 'test':
+            num_test_tasks = self.data.dataset.data_length['test']
+            with tqdm(total=int(num_test_tasks / self.args.test_batch_size)) as pbar_test:
+                for _, test_sample in enumerate(self.data.get_test_batches(total_batches=int(num_test_tasks / self.args.test_batch_size))):
+                    outputs = self.test_iteration(test_sample=test_sample,
+                                                  pbar_test=pbar_test,
+                                                  phase='test')
+                    batch_size = test_sample[0][0].shape[0]
+                    
+                    for k in range(batch_size):
+                        imgpath1 = test_sample[1]['imgpaths'][1][k]
+                        imgpath2 = test_sample[1]['imgpaths'][2][k]
+                        filename1 = imgpath1.split('/')[-1]
+                        filename2 = imgpath2.split('/')[-1]
+                        float_ind1 = float(filename1.split('_')[-1][:-4])
+                        float_ind2 = float(filename2.split('_')[-1][:-4])
+                        if float_ind2 == 0:
+                            float_ind2 = 1.0
+                        im_path = os.path.join(self.args.data_root, '%s_%.06f.%s' 
+                            % (filename1.split('_')[0], (float_ind1 + float_ind2) / 2, self.args.img_fmt))
+
+                        utils.save_image(outputs[k], im_path)
+
+            print('Test finished.')
+            return
+
+        elif self.args.mode == 'val':
             total_losses = dict()
             val_losses = dict()
             metrics_accumulator = {'psnr': utils.AverageMeter(), 'ssim': utils.AverageMeter()}

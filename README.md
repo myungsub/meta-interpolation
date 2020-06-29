@@ -16,6 +16,7 @@ Source code for CVPR 2020 paper "Scene-Adaptive Video Frame Interpolation via Me
 - numpy==1.18.1
 - PyTorch==1.4.0, cudatoolkit==10.1
 - opencv==3.4.2
+- cupy==7.3 (recommended: `conda install cupy -c conda-forge`)
 - tqdm==4.44.1
 
 
@@ -42,6 +43,14 @@ Source code for CVPR 2020 paper "Scene-Adaptive Video Frame Interpolation via Me
   - Currently supports: `sepconv` and `superslomo`
   - Other models are coming soon!
 - For testing, just uncomment two lines containing: `--mode test` and `--pretrained_model {MODEL_NAME}`
+
+### Testing with custom data
+
+- See `run_test.sh` for details:
+- Things to change:
+  - Modify the folder directory containing the video frames by changing `--data_root` to your desired dir/
+  - Make sure to match the image format `--img_fmt` (defaults to `png`)
+  - Change `--model`, `--loss`, and `--pretrained_models` to what you want (loss for [SepConv](https://github.com/sniklaus/sepconv-slomo) should be `1*L1`, and loss for [SuperSloMo](https://github.com/avinashpaliwal/Super-SloMo) model should be `1*Super`)
 
 ### Using Other Meta-Learning Algorithms
 

@@ -14,7 +14,7 @@ CUDA_VISIBLE_DEVICES=1 python main.py \
     --number_of_training_steps_per_iter 1 \
     --number_of_evaluation_steps_per_iter 1 \
     --log_iter 10 \
-#    --mode test \
+#    --mode val \
 #    --pretrained_model pretrained_models/meta_sepconv.pth \
 #    --resume \
 #    --learnable_per_layer_per_step_inner_loop_learning_rate

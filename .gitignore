@@ -162,3 +162,4 @@ crashlytics-build.properties
 fabric.properties
 
 *.swp
+.vscode

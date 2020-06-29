@@ -198,7 +198,10 @@ class SceneAdaptiveInterpolation(nn.Module):
 
     
     def get_task_embeddings(self, frames, task_id, names_weights_copy):
-        support_idxs = [ [0, 2, 4], [2, 4, 6] ]  # frame indices: input[0, 2, 4, 6] --> output[3]
+        if self.args.mode == 'test':
+            support_idxs = [ [0, 1, 2], [1, 2, 3] ]
+        else:
+            support_idxs = [ [0, 2, 4], [2, 4, 6] ]  # frame indices: input[0, 2, 4, 6] --> output[3]
         # target_idx = [2, 3, 4]
         support_loss = 0
         for ind in support_idxs:
@@ -549,3 +552,73 @@ class SceneAdaptiveInterpolation(nn.Module):
         # self.optimizer.zero_grad()
 
         return losses, preds, metrics
+
+
+    def run_test_iter(self, data_batch):
+        """
+        Runs an outer loop evaluation step on the meta-model's parameters.
+        :param data_batch: input data batch containing the support set and target set input, output pairs
+        :param epoch: the index of the current epoch
+        :return: The losses of the ran iteration.
+        """
+
+        if self.training:
+            self.eval()
+
+        frames = [frame.to(device=self.device) for frame in data_batch]
+
+        preds = [[] for i in range(len(frames[0]))]
+        self.net.zero_grad()
+        
+        for task_id in range(len(frames[0])):   # loop over batch dimension
+
+            names_weights_copy = self.get_inner_loop_parameter_dict(self.net.named_parameters())
+            names_weights_copy = {
+                name.replace('module.', ''): value for name, value in names_weights_copy.items()}
+
+            # inner loop
+            support_idxs = [ [0, 1, 2], [1, 2, 3] ]
+            target_idx = [1, 2] # only input
+            self.inner_loop_optimizer.initialize_state()
+
+            # Attenuate the initialization for L2F
+            if self.args.attenuate:
+                task_embeddings = self.get_task_embeddings(frames, task_id, names_weights_copy)
+                names_weights_copy = self.attenuate_init(task_embeddings=task_embeddings,
+                                                         names_weights_copy=names_weights_copy)
+
+            for num_step in range(self.args.number_of_evaluation_steps_per_iter):
+                support_loss = 0
+                for ind in support_idxs:
+                    _loss, _ = self.net_forward(frame0=frames[ind[0]][task_id].unsqueeze(0),
+                                                frame1=frames[ind[2]][task_id].unsqueeze(0),
+                                                target=frames[ind[1]][task_id].unsqueeze(0),
+                                                weights=names_weights_copy,
+                                                backup_running_statistics=True if (num_step == 0) else False,
+                                                training=True,
+                                                num_step=num_step)
+                    support_loss = support_loss + _loss['total']
+
+                names_weights_copy = self.apply_inner_loop_update(loss=support_loss,
+                                                                  names_weights_copy=names_weights_copy,
+                                                                  use_second_order=self.args.second_order,
+                                                                  current_step_idx=num_step)
+
+            frame0 = frames[target_idx[0]][task_id].unsqueeze(0)
+            frame1 = frames[target_idx[1]][task_id].unsqueeze(0)
+            kwargs = {'backup_running_statistics': False, 'training': True, 'num_step': num_step}
+
+            output = self.net.forward(frame0, frame1, params=names_weights_copy, **kwargs)
+        
+            if self.args.model == 'superslomo': # output becomes a tuple
+                output[1]['I0'], output[1]['I1'] = frame0, frame1
+                output = self.revNormalize(output[0].squeeze(0))
+            else:
+                output = output.squeeze(0)
+
+            # print(output.shape)
+            preds[task_id] = output.detach()  # output.shape: (C, H, W)
+            
+            self.net.restore_backup_stats()
+
+        return preds
