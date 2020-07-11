@@ -34,7 +34,7 @@ from pytorch_msssim import ssim as ssim_pth
 def load_checkpoint(args, model, optimizer, fix_loaded=False):
     if args.resume_exp is None:
         args.resume_exp = args.exp_name
-    if args.mode == 'test':
+    if args.mode in ['val', 'test']:
         load_name = os.path.join('checkpoint', args.resume_exp, 'model_best.pth')
     else:
         load_name = os.path.join('checkpoint', args.resume_exp, 'checkpoint.pth')

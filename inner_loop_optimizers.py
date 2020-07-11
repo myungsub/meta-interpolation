@@ -190,7 +190,8 @@ class LSLRGradientDescentLearningRule(nn.Module):
             # print(key, bias_correction1, bias_correction2, step_size)
 
             #updated_names_weights_dict[key] = names_weights_dict[key].addcdiv(-step_size, exp_avg, denom)
-            updated_names_weights_dict[key] = names_weights_dict[key].addcdiv(exp_avg, denom, value=-step_size)
+            #updated_names_weights_dict[key] = names_weights_dict[key].addcdiv(exp_avg, denom, value=-step_size)
+            updated_names_weights_dict[key] = names_weights_dict[key] -step_size * exp_avg / denom
 
         return updated_names_weights_dict
 
@@ -235,7 +236,8 @@ class LSLRGradientDescentLearningRule(nn.Module):
             bias_correction = 1 - beta1 ** state['step']
             clr = self.names_learning_rates_dict[key.replace(".", "-")][num_step] / bias_correction
 
-            updated_names_weights_dict[key] = names_weights_dict[key].addcdiv(exp_avg, exp_inf, value=-clr)
+            #updated_names_weights_dict[key] = names_weights_dict[key].addcdiv(exp_avg, exp_inf, value=-clr)
+            updated_names_weights_dict[key] = names_weights_dict[key] - clr * exp_avg / exp_inf
 
         return updated_names_weights_dict
 
@@ -381,8 +383,6 @@ class MetaSGDLearningRule(nn.Module):
     def update_adamax(self, names_weights_dict, names_grads_wrt_params_dict):
         """Parameter update with Adamax optimizer.
         """
-        # print('before:')
-        # print(names_weights_dict['moduleDeconv2.4.weight'][0][0].data)
         updated_names_weights_dict = dict()
         for key in names_grads_wrt_params_dict.keys():
             #names_weights_dict[key]            # param
@@ -404,8 +404,8 @@ class MetaSGDLearningRule(nn.Module):
                 names_grads_wrt_params_dict[key] = names_grads_wrt_params_dict[key].add(self.weight_decay, names_weights_dict[key])
             
             # Update biased first moment estimate.
-            exp_avg.mul_(beta1).add_(1 - beta1, names_grads_wrt_params_dict[key])
-            # exp_avg = (beta1 * exp_avg).add(1 - beta1, names_grads_wrt_params_dict[key])
+            exp_avg = (beta1 * exp_avg).add(1 - beta1, names_grads_wrt_params_dict[key])
+
             # Update the exponentially weighted infinity norm.
             norm_buf = torch.cat([
                 exp_inf.mul_(beta2).unsqueeze(0),

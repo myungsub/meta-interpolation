@@ -858,12 +858,13 @@ class MetaSequential(nn.Sequential):
 
     def is_meta_layer(self, module):
         if isinstance(module, MetaConv2dLayer) or \
-                isinstance(module, MetaBatchNormLayer) or \
-                isinstance(module, MetaLinearLayer) or \
-                isinstance(module, MetaSequential) or \
-                isinstance(module, MetaCALayer) or \
-                isinstance(module, MetaRCAB) or \
-                isinstance(module, MetaResidualGroup):
+           isinstance(module, MetaConvNorm) or \
+           isinstance(module, MetaBatchNormLayer) or \
+           isinstance(module, MetaLinearLayer) or \
+           isinstance(module, MetaSequential) or \
+           isinstance(module, MetaCALayer) or \
+           isinstance(module, MetaRCAB) or \
+           isinstance(module, MetaResidualGroup):
             return True
         else:
             return False

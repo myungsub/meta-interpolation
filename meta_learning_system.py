@@ -43,14 +43,22 @@ class SceneAdaptiveInterpolation(nn.Module):
         # self.im_shape = im_shape
         self.current_epoch = 0
 
+        # Update indices for inner/outer loop (Assume 7-frame inputs)
+        self.support_idxs = [ [0, 2, 4], [2, 4, 6] ]
+        if args.mode == 'test':
+            self.support_idxs = [ [0, 1, 2], [1, 2, 3] ]
+        self.target_idxs = [2, 3, 4]
+
         self.rng = set_torch_seed(seed=args.random_seed)
-        # self.classifier = VGGReLUNormNetwork(im_shape=self.im_shape, num_output_classes=self.args.num_classes_per_set,
-        #                                      args=args, device=device, meta_classifier=True).to(device=self.device)
         if self.args.model == 'sepconv':
             print('Building SepConv model...')
             from sepconv.model import MetaNetwork as MetaSepConv
             self.net = MetaSepConv(resume=False if self.args.resume else True,
                                    strModel='l1').to(self.device)
+        elif self.args.model == 'dain':
+            print('Building DAIN model...')
+            from dain.model import MetaDAIN
+            self.net = MetaDAIN(resume=False if self.args.resume else True).to(self.device)
         elif self.args.model == 'cain':
             print('Building CAIN model...')
             from cain.model import MetaCAIN
@@ -204,10 +212,7 @@ class SceneAdaptiveInterpolation(nn.Module):
 
     
     def get_task_embeddings(self, frames, task_id, names_weights_copy):
-        if self.args.mode == 'test':
-            support_idxs = [ [0, 1, 2], [1, 2, 3] ]
-        else:
-            support_idxs = [ [0, 2, 4], [2, 4, 6] ]  # frame indices: input[0, 2, 4, 6] --> output[3]
+        support_idxs = self.support_idxs  # frame indices: input[0, 2, 4, 6] --> output[3]
         # target_idx = [2, 3, 4]
         support_loss = 0
         for ind in support_idxs:
@@ -350,8 +355,8 @@ class SceneAdaptiveInterpolation(nn.Module):
                 name.replace('module.', ''): value for name, value in names_weights_copy.items()}
 
             # inner loop
-            support_idxs = [ [0, 2, 4], [2, 4, 6] ]  # frame indices: input[0, 2, 4, 6] --> output[3]
-            target_idx = [2, 3, 4]
+            support_idxs = self.support_idxs  # frame indices: input[0, 2, 4, 6] --> output[3]
+            target_idx = self.target_idxs
             self.inner_loop_optimizer.initialize_state()
 
             # Attenuate the initialization for L2F
