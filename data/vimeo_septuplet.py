@@ -33,6 +33,11 @@ class VimeoSeptuplet(Dataset):
             mean = [0.429, 0.431, 0.397]
             std  = [1, 1, 1]
             self.normalize = transforms.Normalize(mean=mean, std=std)
+        elif args.model == 'voxelflow':
+            print('Voxelflow normalization')
+            mean = [0.5 * 255, 0.5 * 255, 0.5 * 255]
+            std = [0.5 * 255, 0.5 * 255, 0.5 * 255]
+            self.normalize = transforms.Normalize(mean=mean, std=std)
 
 
     def __getitem__(self, index):
@@ -65,10 +70,13 @@ class VimeoSeptuplet(Dataset):
         images = [im[:, :, [2, 1, 0]] for im in images]
 
         # Numpy to torch Tensor
-        images = [torch.from_numpy(np.ascontiguousarray(np.transpose(im, (2, 0, 1)))).float() / 255 for im in images]
+        if self.args.model == 'voxelflow':
+            images = [torch.from_numpy(np.ascontiguousarray(np.transpose(im, (2, 0, 1)))).float() for im in images]
+        else:
+            images = [torch.from_numpy(np.ascontiguousarray(np.transpose(im, (2, 0, 1)))).float() / 255 for im in images]
         metadata = {'imgpaths': imgpaths}
 
-        if self.args.model == 'superslomo':
+        if self.args.model in ['superslomo', 'voxelflow']:
             images = [self.normalize(im) for im in images]
 
         return images, metadata

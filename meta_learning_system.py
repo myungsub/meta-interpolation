@@ -75,6 +75,8 @@ class SceneAdaptiveInterpolation(nn.Module):
             print('Building Deep VoxelFlow (DVF) model...')
             from voxelflow.core.models.voxel_flow import MetaVoxelFlow
             self.net = MetaVoxelFlow(self.args, resume=False if self.args.resume else True).to(self.device)
+            self.mean = torch.FloatTensor([0.5 * 255, 0.5 * 255, 0.5 * 255]).to(self.device).unsqueeze(1).unsqueeze(2)
+            self.std = torch.FloatTensor([0.5 * 255, 0.5 * 255, 0.5 * 255]).to(self.device).unsqueeze(1).unsqueeze(2)
         else:
             raise NotImplementedError('Model not implemented yet!')
 
@@ -394,18 +396,20 @@ class SceneAdaptiveInterpolation(nn.Module):
                     task_losses.append(per_step_loss_importance_vectors[num_step] * target_loss['total'])
                     self.update_loss_metrics(loss_accumulator, target_loss)
 
-                if not (use_multi_step_loss_optimization and training_phase and epoch < self.args.multi_step_loss_num_epochs):
-                    kwargs = {'backup_running_statistics': False, 'training': True, 'num_step': num_steps}
-                    target_loss, target_preds = self.net_forward(frame0=frames[target_idx[0]][task_id].unsqueeze(0),
-                                                                 frame1=frames[target_idx[2]][task_id].unsqueeze(0),
-                                                                 target=frames[target_idx[1]][task_id].unsqueeze(0),
-                                                                 weights=names_weights_copy,
-                                                                 **kwargs)
-                    task_losses.append(target_loss['total'])
-                    self.update_loss_metrics(loss_accumulator, target_loss)
+            if not (use_multi_step_loss_optimization and training_phase and epoch < self.args.multi_step_loss_num_epochs):
+                kwargs = {'backup_running_statistics': False, 'training': True, 'num_step': num_steps}
+                target_loss, target_preds = self.net_forward(frame0=frames[target_idx[0]][task_id].unsqueeze(0),
+                                                             frame1=frames[target_idx[2]][task_id].unsqueeze(0),
+                                                             target=frames[target_idx[1]][task_id].unsqueeze(0),
+                                                             weights=names_weights_copy,
+                                                             **kwargs)
+                task_losses.append(target_loss['total'])
+                self.update_loss_metrics(loss_accumulator, target_loss)
 
             if self.args.model == 'superslomo':
                 per_task_target_preds[task_id] = self.revNormalize(target_preds.detach().squeeze(0)).unsqueeze(0)
+            elif self.args.model == 'voxelflow':
+                per_task_target_preds[task_id] = ((target_preds.detach().squeeze(0) * self.std + self.mean) / 255.0).unsqueeze(0)
             else:
                 per_task_target_preds[task_id] = target_preds.detach()  # target_preds.shape: (1, C, H, W)
             
@@ -413,6 +417,9 @@ class SceneAdaptiveInterpolation(nn.Module):
                 if self.args.model == 'superslomo':
                     output = self.revNormalize(target_preds.squeeze(0))
                     target = self.revNormalize(frames[target_idx[1]][task_id])
+                elif self.args.model == 'voxelflow':
+                    output = (target_preds.squeeze(0) * self.std + self.mean) / 255.0
+                    target = (frames[target_idx[1]][task_id] * self.std + self.mean) / 255.0
                 else:
                     output = target_preds.squeeze(0)
                     target = frames[target_idx[1]][task_id]

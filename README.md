@@ -22,7 +22,7 @@ Source code for CVPR 2020 paper "Scene-Adaptive Video Frame Interpolation via Me
 
 ## Usage
 
-***Disclaimer :*** This code is re-organized to run multiple different models in this single codebase. Due to a lot of version and env changes, the numbers obtained from this code may be different (usually better) from those reported in the paper. The original code modifies the main training scripts for each frame interpolation github repo ([[DVF](https://github.com/lxx1991/pytorch-voxel-flow)], [[SuperSloMo](https://github.com/avinashpaliwal/Super-SloMo)], [[SepConv](https://github.com/sniklaus/sepconv-slomo)], [[DAIN](https://github.com/baowenbo/DAIN)]), and are put in `./legacy/*.py`. If you want to *exactly* reproduce the numbers reported in our paper, please contact [@myungsub](https://github.com/myungsub) for legacy experimental settings.
+***Disclaimer :*** This code is re-organized to run multiple different models in this single codebase. Due to a lot of version and env changes, the numbers obtained from this code may be different (usually better) from those reported in the paper. The original code modifies the main training scripts for each frame interpolation github repo ([[DVF (voxelflow)](https://github.com/lxx1991/pytorch-voxel-flow)], [[SuperSloMo](https://github.com/avinashpaliwal/Super-SloMo)], [[SepConv](https://github.com/sniklaus/sepconv-slomo)], [[DAIN](https://github.com/baowenbo/DAIN)]), and are put in `./legacy/*.py`. If you want to *exactly* reproduce the numbers reported in our paper, please contact [@myungsub](https://github.com/myungsub) for legacy experimental settings.
 
 ### Dataset Preparation
 
@@ -40,7 +40,7 @@ Source code for CVPR 2020 paper "Scene-Adaptive Video Frame Interpolation via Me
 ### Training / Testing with Vimeo90K-Septuplet dataset
 
 - For training, simply run: `./run_{VFI_MODEL_NAME}.sh`
-  - Currently supports: `sepconv` and `superslomo`
+  - Currently supports: `sepconv`, `voxelflow`, `superslomo`, and `cain`
   - Other models are coming soon!
 - For testing, just uncomment two lines containing: `--mode test` and `--pretrained_model {MODEL_NAME}`
 
@@ -50,7 +50,12 @@ Source code for CVPR 2020 paper "Scene-Adaptive Video Frame Interpolation via Me
 - Things to change:
   - Modify the folder directory containing the video frames by changing `--data_root` to your desired dir/
   - Make sure to match the image format `--img_fmt` (defaults to `png`)
-  - Change `--model`, `--loss`, and `--pretrained_models` to what you want (loss for [SepConv](https://github.com/sniklaus/sepconv-slomo) should be `1*L1`, and loss for [SuperSloMo](https://github.com/avinashpaliwal/Super-SloMo) model should be `1*Super`)
+  - Change `--model`, `--loss`, and `--pretrained_models` to what you want 
+    - For [SepConv](https://github.com/sniklaus/sepconv-slomo), `--model` should be `sepconv`, and `--loss` should be `1*L1`
+    - For [VoxelFlow](https://github.com/lxx1991), `--model` should be 'voxelflow', and `--loss` should be `1*MSE`
+    - For [SuperSloMo](https://github.com/avinashpaliwal/Super-SloMo),  `--model` should be `superslomo`, `--loss` should be `1*Super`
+    - For [CAIN](https://github.com/myungsub/CAIN), `--model` should be `cain`, and `--loss` should be `1*L1`
+
 
 ### Using Other Meta-Learning Algorithms
 
