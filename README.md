@@ -39,14 +39,14 @@ Source code for CVPR 2020 paper "Scene-Adaptive Video Frame Interpolation via Me
 
 ### Training / Testing with Vimeo90K-Septuplet dataset
 
-- For training, simply run: `./run_{VFI_MODEL_NAME}.sh`
-  - Currently supports: `sepconv`, `voxelflow`, `superslomo`, and `cain`
+- For training, simply run: `./scripts/run_{VFI_MODEL_NAME}.sh`
+  - Currently supports: `sepconv`, `voxelflow`, `superslomo`, `cain`, and `rrin`
   - Other models are coming soon!
-- For testing, just uncomment two lines containing: `--mode test` and `--pretrained_model {MODEL_NAME}`
+- For testing, just uncomment two lines containing: `--mode val` and `--pretrained_model {MODEL_NAME}`
 
 ### Testing with custom data
 
-- See `run_test.sh` for details:
+- See `scripts/run_test.sh` for details:
 - Things to change:
   - Modify the folder directory containing the video frames by changing `--data_root` to your desired dir/
   - Make sure to match the image format `--img_fmt` (defaults to `png`)
@@ -55,13 +55,15 @@ Source code for CVPR 2020 paper "Scene-Adaptive Video Frame Interpolation via Me
     - For [VoxelFlow](https://github.com/lxx1991), `--model` should be 'voxelflow', and `--loss` should be `1*MSE`
     - For [SuperSloMo](https://github.com/avinashpaliwal/Super-SloMo),  `--model` should be `superslomo`, `--loss` should be `1*Super`
     - For [CAIN](https://github.com/myungsub/CAIN), `--model` should be `cain`, and `--loss` should be `1*L1`
+    - For [RRIN](https://github.com/HopLee6/RRIN), '`--model` should be 'rrin', and `--loss` should be `1*L1`
 
 
 ### Using Other Meta-Learning Algorithms
 
-- Current code supports using more advanced meta-learning algorithms compared to vanilla MAML, *e.g.* [MAML++](https://github.com/AntreasAntoniou/HowToTrainYourMAMLPytorch) or [L2F](https://github.com/baiksung/L2F), although not fully tested.
+- Current code supports using more advanced meta-learning algorithms compared to vanilla MAML, *e.g.* [MAML++](https://github.com/AntreasAntoniou/HowToTrainYourMAMLPytorch), [L2F](https://github.com/baiksung/L2F), or [Meta-SGD](https://arxiv.org/abs/1707.09835).
   - For MAML++ you can explore many different hyperparameters by adding additional options (see `config.py`)
-  - For L2F, just uncomment `--attenuate` in `run_{VFI_MODEL_NAME}.sh`
+  - For L2F, just uncomment `--attenuate` in `scripts/run_{VFI_MODEL_NAME}.sh`
+  - For Meta-SGD, just uncomment `--metasgd` (This seems to have the best performance!)
 
 ### Framework Overview
 
@@ -105,5 +107,5 @@ If you find this code useful for your research, please consider citing the follo
 ## Acknowledgement
 
 The main structure of this code is based on [MAML++](https://github.com/AntreasAntoniou/HowToTrainYourMAMLPytorch).
-Training scripts for each of the frame interpolation method is adopted from: [[DVF](https://github.com/lxx1991/pytorch-voxel-flow)], [[SuperSloMo](https://github.com/avinashpaliwal/Super-SloMo)], [[SepConv](https://github.com/sniklaus/sepconv-slomo)], [[DAIN](https://github.com/baowenbo/DAIN)], [[CAIN](https://github.com/myungsub/CAIN)]
+Training scripts for each of the frame interpolation method is adopted from: [[DVF](https://github.com/lxx1991/pytorch-voxel-flow)], [[SuperSloMo](https://github.com/avinashpaliwal/Super-SloMo)], [[SepConv](https://github.com/sniklaus/sepconv-slomo)], [[DAIN](https://github.com/baowenbo/DAIN)], [[CAIN](https://github.com/myungsub/CAIN)], [[RRIN](https://github.com/HopLee6/RRIN)]
 We thank the authors for sharing the codes for their great works.

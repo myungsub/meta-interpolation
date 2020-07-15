@@ -63,6 +63,10 @@ class SceneAdaptiveInterpolation(nn.Module):
             print('Building CAIN model...')
             from cain.model import MetaCAIN
             self.net = MetaCAIN(depth=3, resume=False if self.args.resume else True).to(self.device)
+        elif self.args.model == 'rrin':
+            print('Building RRIN model...')
+            from rrin.model import MetaRRIN
+            self.net = MetaRRIN(level=3, resume=False if self.args.resume else True).to(self.device)
         elif self.args.model == 'superslomo':
             print('Building SuperSloMo model...')
             from superslomo.model import MetaSuperSloMo
@@ -180,9 +184,14 @@ class SceneAdaptiveInterpolation(nn.Module):
         :return: A tensor to be used to compute the weighted average of the loss, useful for
         the MSL (Multi Step Loss) mechanism.
         """
+        if self.args.number_of_training_steps_per_iter == 0:
+            loss_weights = np.ones(shape=(1))
+            return torch.Tensor(loss_weights).to(device=self.device)
+        
         loss_weights = np.ones(shape=(self.args.number_of_training_steps_per_iter)) * (1.0 / self.args.number_of_training_steps_per_iter)
         decay_rate = 1.0 / self.args.number_of_training_steps_per_iter / self.args.multi_step_loss_num_epochs
         min_value_for_non_final_losses = 0.03 / self.args.number_of_training_steps_per_iter
+
         for i in range(len(loss_weights) - 1):
             curr_value = np.maximum(loss_weights[i] - (self.current_epoch * decay_rate), min_value_for_non_final_losses)
             loss_weights[i] = curr_value

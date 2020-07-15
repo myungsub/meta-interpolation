@@ -1,9 +1,9 @@
 #!/bin/bash
 
-CUDA_VISIBLE_DEVICES=1 python main.py \
-    --exp_name sepconv \
+CUDA_VISIBLE_DEVICES=7 python main.py \
+    --exp_name sepconv-i3-metasgd \
     --model sepconv \
-    --batch_size 8 \
+    --batch_size 3 \
     --val_batch_size 1 \
     --loss 1*L1 \
     --optimizer Adamax \
@@ -11,14 +11,16 @@ CUDA_VISIBLE_DEVICES=1 python main.py \
     --outer_lr 1e-5 \
     --total_iter_per_epoch 5000 \
     --max_epoch 50 \
-    --number_of_training_steps_per_iter 1 \
-    --number_of_evaluation_steps_per_iter 1 \
+    --number_of_training_steps_per_iter 3 \
+    --number_of_evaluation_steps_per_iter 3 \
     --log_iter 10 \
+    --metasgd \
+    --resume
 #    --mode val \
-#    --pretrained_model pretrained_models/meta_sepconv.pth \
-#    --metasgd
-#    --resume \
+#    --resume
 #    --learnable_per_layer_per_step_inner_loop_learning_rate
+#    --pretrained_model pretrained_models/meta_sepconv.pth \
+#    --resume \
 #    --second_order
 #    --first_order_to_second_order_epoch -1
 #    --use_multi_step_loss_optimization
