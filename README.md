@@ -52,10 +52,10 @@ Source code for CVPR 2020 paper "Scene-Adaptive Video Frame Interpolation via Me
   - Make sure to match the image format `--img_fmt` (defaults to `png`)
   - Change `--model`, `--loss`, and `--pretrained_models` to what you want 
     - For [SepConv](https://github.com/sniklaus/sepconv-slomo), `--model` should be `sepconv`, and `--loss` should be `1*L1`
-    - For [VoxelFlow](https://github.com/lxx1991), `--model` should be 'voxelflow', and `--loss` should be `1*MSE`
+    - For [VoxelFlow](https://github.com/lxx1991), `--model` should be `voxelflow`, and `--loss` should be `1*MSE`
     - For [SuperSloMo](https://github.com/avinashpaliwal/Super-SloMo),  `--model` should be `superslomo`, `--loss` should be `1*Super`
     - For [CAIN](https://github.com/myungsub/CAIN), `--model` should be `cain`, and `--loss` should be `1*L1`
-    - For [RRIN](https://github.com/HopLee6/RRIN), '`--model` should be 'rrin', and `--loss` should be `1*L1`
+    - For [RRIN](https://github.com/HopLee6/RRIN), '`--model` should be `rrin`, and `--loss` should be `1*L1`
 
 
 ### Using Other Meta-Learning Algorithms
@@ -107,5 +107,5 @@ If you find this code useful for your research, please consider citing the follo
 ## Acknowledgement
 
 The main structure of this code is based on [MAML++](https://github.com/AntreasAntoniou/HowToTrainYourMAMLPytorch).
-Training scripts for each of the frame interpolation method is adopted from: [[DVF](https://github.com/lxx1991/pytorch-voxel-flow)], [[SuperSloMo](https://github.com/avinashpaliwal/Super-SloMo)], [[SepConv](https://github.com/sniklaus/sepconv-slomo)], [[DAIN](https://github.com/baowenbo/DAIN)], [[CAIN](https://github.com/myungsub/CAIN)], [[RRIN](https://github.com/HopLee6/RRIN)]
+Training scripts for each of the frame interpolation method is adopted from: [[DVF](https://github.com/lxx1991/pytorch-voxel-flow)], [[SuperSloMo](https://github.com/avinashpaliwal/Super-SloMo)], [[SepConv](https://github.com/sniklaus/sepconv-slomo)], [[DAIN](https://github.com/baowenbo/DAIN)], [[CAIN](https://github.com/myungsub/CAIN)], [[RRIN](https://github.com/HopLee6/RRIN)]. 
 We thank the authors for sharing the codes for their great works.
