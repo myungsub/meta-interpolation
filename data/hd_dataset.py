@@ -9,18 +9,16 @@ from PIL import Image
 import random
 
 class HD(Dataset):
-    def __init__(self, data_root, n_frames, is_training):
-        self.data_root = 'data/HD_dataset/HD_RGB'
+    def __init__(self, args):# data_root, n_frames, is_training):
+        self.args = args
+        self.data_root = args.data_root #'data/HD_dataset/HD_RGB'
 
-        self.image_root = self.data_root # os.path.join(self.data_root, 'sequences')
-        self.crop_size = 512
-
-        self.training = is_training
+        self.image_root = self.data_root 
 
         vidlist = sorted(glob.glob(os.path.join(self.image_root, '*')))
         imglist = [sorted(glob.glob(os.path.join(v, '*.png'))) for v in vidlist]
 
-        self.n_frames = n_frames    # should be an odd number
+        n_frames = 7
 
         imgBatch = []
         for frames in imglist:
@@ -33,9 +31,25 @@ class HD(Dataset):
                         imgBatch.append(frames[-n_frames:])
                 else:
                     imgBatch.append(frames) # the whole sequence length is smaller than n_frames
-                t += n_frames
+                #t += n_frames
+                t += 2
 
         self.imgBatch = imgBatch
+
+        self.batch_size = {'train': 1, 'val': 1, 'test': 1}
+        self.current_set_name = 'val'
+        self.data_length = {'train': 0, 'val': len(self.imgBatch), 'test': 0}
+
+        if args.model == 'superslomo':
+            print('SuperSloMo normalization')
+            mean = [0.429, 0.431, 0.397]
+            std = [1, 1, 1]
+            self.normalize = transforms.Normalize(mean=mean, std=std)
+        elif args.model == 'voxelflow':
+            print('Voxelflow normalization')
+            mean = [0.5 * 255, 0.5 * 255, 0.5 * 255]
+            std = [0.5 * 255, 0.5 * 255, 0.5 * 255]
+            self.normalize = transforms.Normalize(mean=mean, std=std)
 
         
     def __getitem__(self, index):
@@ -44,43 +58,25 @@ class HD(Dataset):
         # Load images
         imgs = [cv2.imread(p) for p in imgpaths]
 
-        # Data augmentation
-        if False: #self.training:
-            # Random crop
-            H, W, C = imgs[0].shape
-            rnd_h = random.randint(0, max(0, H - self.crop_size))
-            rnd_w = random.randint(0, max(0, W - self.crop_size))
-
-            imgs = [v[rnd_h:rnd_h + self.crop_size,
-                      rnd_w:rnd_w + self.crop_size, :] for v in imgs]
-            #gts = [v[rnd_h:rnd_h + self.crop_size,
-            #         rnd_w:rnd_w + self.crop_size, :] for v in gts]
-
-            # Random Temporal Flip
-            if random.random() >= 0.5:
-                imgs = imgs[::-1]
-                imgpaths = imgpaths[::-1]
-        #imgs = np.stack(imgs, axis=0)   # THWC
-
         # BGR to RGB
         imgs = [im[:, :, [2, 1, 0]] for im in imgs]
 
         # numpy to torch tensor
-        imgs = [torch.from_numpy(np.ascontiguousarray(np.transpose(im, (2, 0, 1)))).float() / 255 for im in imgs]
+        if self.args.model == 'voxelflow':
+            imgs = [torch.from_numpy(np.ascontiguousarray(np.transpose(im, (2, 0, 1)))).float() for im in imgs]
+        else:
+            imgs = [torch.from_numpy(np.ascontiguousarray(np.transpose(im, (2, 0, 1)))).float() / 255 for im in imgs]
 
-        #meta = {'imgpath': imgpaths}
-        return imgs, imgpaths #meta
+        if self.args.model in ['superslomo', 'voxelflow']:
+            imgs = [self.normalize(im) for im in imgs]
+
+        metadata = {'imgpaths': imgpaths}
+        return imgs, metadata
+
+
+    def switch_set(self, set_name, current_iter=None):
+        self.current_set_name = set_name
 
     def __len__(self):
-        return len(self.imgBatch)
+        return self.data_length[self.current_set_name]
 
-
-
-def get_loader(mode, data_root, batch_size, shuffle, num_workers, n_frames=1):
-    if mode == 'train':
-        is_training = True
-    else:
-        is_training = False
-    dataset = HD(data_root, is_training=is_training)
-    
-    return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers, pin_memory=True)

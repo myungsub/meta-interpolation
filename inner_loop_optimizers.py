@@ -138,6 +138,8 @@ class LSLRGradientDescentLearningRule(nn.Module):
         """
         updated_names_weights_dict = dict()
         for key in names_grads_wrt_params_dict.keys():
+            if names_grads_wrt_params_dict[key] is None:
+                continue
             updated_names_weights_dict[key] = names_weights_dict[key] - \
                                               self.names_learning_rates_dict[key.replace(".", "-")][num_step] \
                                               * names_grads_wrt_params_dict[key]
@@ -191,7 +193,7 @@ class LSLRGradientDescentLearningRule(nn.Module):
 
             #updated_names_weights_dict[key] = names_weights_dict[key].addcdiv(-step_size, exp_avg, denom)
             #updated_names_weights_dict[key] = names_weights_dict[key].addcdiv(exp_avg, denom, value=-step_size)
-            updated_names_weights_dict[key] = names_weights_dict[key] -step_size * exp_avg / denom
+            updated_names_weights_dict[key] = names_weights_dict[key] - step_size * exp_avg / denom
 
         return updated_names_weights_dict
 
@@ -210,8 +212,8 @@ class LSLRGradientDescentLearningRule(nn.Module):
             state = self.state[key]
             if len(state) == 0:
                 state['step'] = 0
-                state['exp_avg'] = torch.zeros_like(names_weights_dict[key], memory_format=torch.preserve_format)
-                state['exp_inf'] = torch.zeros_like(names_weights_dict[key], memory_format=torch.preserve_format)
+                state['exp_avg'] = torch.zeros_like(names_weights_dict[key])#, memory_format=torch.preserve_format)
+                state['exp_inf'] = torch.zeros_like(names_weights_dict[key])#, memory_format=torch.preserve_format)
             exp_avg, exp_inf = state['exp_avg'], state['exp_inf']
             beta1, beta2 = self.beta1, self.beta2
             eps = self.eps
@@ -392,8 +394,8 @@ class MetaSGDLearningRule(nn.Module):
             state = self.state[key]
             if len(state) == 0:
                 state['step'] = 0
-                state['exp_avg'] = torch.zeros_like(names_weights_dict[key], memory_format=torch.preserve_format)
-                state['exp_inf'] = torch.zeros_like(names_weights_dict[key], memory_format=torch.preserve_format)
+                state['exp_avg'] = torch.zeros_like(names_weights_dict[key])#, memory_format=torch.preserve_format)
+                state['exp_inf'] = torch.zeros_like(names_weights_dict[key])#, memory_format=torch.preserve_format)
             exp_avg, exp_inf = state['exp_avg'], state['exp_inf']
             beta1, beta2 = self.beta1, self.beta2
             eps = self.eps

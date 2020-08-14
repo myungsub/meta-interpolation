@@ -27,12 +27,9 @@ def set_torch_seed(seed):
 
 
 class SceneAdaptiveInterpolation(nn.Module):
-    # def __init__(self, im_shape, device, args):
     def __init__(self, args):
         """
         Initializes a MAML few shot learning system
-        :param im_shape: The images input size, in batch, c, h, w shape
-        :param device: The device to use to use the model on.
         :param args: A namedtuple of arguments specifying various hyperparameters.
         """
         super(SceneAdaptiveInterpolation, self).__init__()
@@ -40,7 +37,6 @@ class SceneAdaptiveInterpolation(nn.Module):
         self.device = torch.device('cuda') if args.cuda else torch.device('cpu')
         self.batch_size = args.batch_size
         self.use_cuda = args.cuda
-        # self.im_shape = im_shape
         self.current_epoch = 0
 
         # Update indices for inner/outer loop (Assume 7-frame inputs)
@@ -57,7 +53,7 @@ class SceneAdaptiveInterpolation(nn.Module):
                                    strModel='l1').to(self.device)
         elif self.args.model == 'dain':
             print('Building DAIN model...')
-            from dain.model import MetaDAIN
+            from dain.networks.DAIN import MetaDAIN
             self.net = MetaDAIN(resume=False if self.args.resume else True).to(self.device)
         elif self.args.model == 'cain':
             print('Building CAIN model...')
@@ -92,10 +88,17 @@ class SceneAdaptiveInterpolation(nn.Module):
                                                             init_learning_rate=self.inner_learning_rate)
         else:
             self.inner_loop_optimizer = LSLRGradientDescentLearningRule(device=self.device,
-                                                                        optimizer=self.args.optimizer, #'Adamax',
+                                                                        optimizer=self.args.optimizer,
                                                                         init_learning_rate=self.inner_learning_rate,
                                                                         total_num_inner_loop_steps=self.args.number_of_training_steps_per_iter,
                                                                         use_learnable_learning_rates=self.args.learnable_per_layer_per_step_inner_loop_learning_rate)
+        
+        if self.args.model == 'dain':
+            for k, v in self.net.named_parameters():
+                if k.find('rectifyNet') < 0:
+                    v.requires_grad = False
+                else:
+                    v.requires_grad = True
         
         names_weights_dict = self.get_inner_loop_parameter_dict(params=self.net.named_parameters())
         self.inner_loop_optimizer.initialize(names_weights_dict=names_weights_dict)
@@ -130,14 +133,14 @@ class SceneAdaptiveInterpolation(nn.Module):
             print('Using optimizer Adam.')
             if self.args.model == 'voxelflow':
                 policies = self.net.get_optim_policies()
-                self.optimizer = optim.Adam(policies, lr=args.outer_lr, weight_decay=args.weight_decay) #Optim(policies, args)
+                self.optimizer = optim.Adam(policies, lr=args.outer_lr, weight_decay=args.weight_decay)
             else:
                 self.optimizer = optim.Adam(self.trainable_parameters(), lr=args.outer_lr, betas=(0.9, 0.99))
         elif self.args.optimizer == 'Adamax':
             print('Using optimizer Adamax.')
             self.optimizer = optim.Adamax(self.trainable_parameters(), lr=args.outer_lr, betas=(0.9, 0.999))
         else:
-            self.optimizer = optim.SGD(self.trainable_parameters, lr=args.outer_lr)
+            self.optimizer = optim.SGD(self.trainable_parameters(), lr=args.outer_lr)
         self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer=self.optimizer, mode='min', factor=0.2, patience=5, verbose=True)
         
         num_params = 0
@@ -152,6 +155,7 @@ class SceneAdaptiveInterpolation(nn.Module):
             print('Resume training')
             utils.load_checkpoint(args, self, None)
 
+
         if self.args.pretrained_model is not None:
             print('Loading pretrained model: %s' % self.args.pretrained_model)
             checkpoint = torch.load(self.args.pretrained_model)
@@ -161,6 +165,8 @@ class SceneAdaptiveInterpolation(nn.Module):
                     utils.lossy_load_state_dict(self.net.arbTimeFlowIntrp, checkpoint['state_dictAT'])
                 else:
                     utils.lossy_load_state_dict(self, checkpoint['state_dict'])
+            elif self.args.model == 'dain':
+                utils.lossy_load_state_dict(self.net, checkpoint)
             else:
                 utils.lossy_load_state_dict(self.net, checkpoint['state_dict'])
 
@@ -405,7 +411,17 @@ class SceneAdaptiveInterpolation(nn.Module):
                     task_losses.append(per_step_loss_importance_vectors[num_step] * target_loss['total'])
                     self.update_loss_metrics(loss_accumulator, target_loss)
 
-            if not (use_multi_step_loss_optimization and training_phase and epoch < self.args.multi_step_loss_num_epochs):
+            if not training_phase:
+                kwargs = {'backup_running_statistics': False, 'training': True, 'num_step': num_steps}
+                with torch.no_grad():
+                    target_loss, target_preds = self.net_forward(frame0=frames[target_idx[0]][task_id].unsqueeze(0),
+                                                                 frame1=frames[target_idx[2]][task_id].unsqueeze(0),
+                                                                 target=frames[target_idx[1]][task_id].unsqueeze(0),
+                                                                 weights=names_weights_copy,
+                                                                 **kwargs)
+                task_losses.append(target_loss['total'])
+                self.update_loss_metrics(loss_accumulator, target_loss)
+            elif not (use_multi_step_loss_optimization and training_phase and epoch < self.args.multi_step_loss_num_epochs):
                 kwargs = {'backup_running_statistics': False, 'training': True, 'num_step': num_steps}
                 target_loss, target_preds = self.net_forward(frame0=frames[target_idx[0]][task_id].unsqueeze(0),
                                                              frame1=frames[target_idx[2]][task_id].unsqueeze(0),
@@ -473,13 +489,20 @@ class SceneAdaptiveInterpolation(nn.Module):
         """
 
         kwargs = {'backup_running_statistics': backup_running_statistics, 'num_step': num_step}
-        output = self.net.forward(frame0, frame1, params=weights, **kwargs)
+        
+        if self.args.model == 'dain':
+            output = self.net.forward(torch.stack((frame0, target, frame1), dim=0), params=weights)
+        else:
+            output = self.net.forward(frame0, frame1, params=weights, **kwargs)
         # output = self.net.forward(frame0, frame1, params=None, **kwargs)
         
         if self.args.model == 'superslomo': # output becomes a tuple
             output[1]['I0'], output[1]['I1'] = frame0, frame1
             losses = self.criterion(output[0], target, **output[1])
             output = output[0]
+        elif self.args.model == 'dain': # output tuple: (losses, offsets, filters, occlusions, (cur_output_rectified) )
+            losses = {'total': output[0], 'DAIN': output[0]}
+            output = output[1]
         else:
             losses = self.criterion(output, target)
 
@@ -539,7 +562,24 @@ class SceneAdaptiveInterpolation(nn.Module):
         #grads = torch.autograd.grad(loss, self.net.parameters())
         #for j, param in enumerate(self.net.parameters()):
         #    param.grad = grads[j]
+
+        '''for name, param in self.named_parameters():
+            if param.requires_grad:
+                print(name)
+                if name.find('inner_loop')>=0:
+                    print(name, param.shape)
+                    import pdb; pdb.set_trace()
+        '''
+
         self.optimizer.step()
+
+
+        '''for name, param in self.named_parameters():
+            if param.requires_grad:
+                print(name)
+            if name.find('inner_loop') >= 0:
+                print(param)
+        '''
 
     def run_train_iter(self, data_batch, epoch, do_evaluation=False):
         """
@@ -573,8 +613,8 @@ class SceneAdaptiveInterpolation(nn.Module):
         :return: The losses of the ran iteration.
         """
 
-        if self.training:
-            self.eval()
+        #if self.training:
+        #    self.eval()
 
         data_batch = [frame.to(device=self.device) for frame in data_batch]
 

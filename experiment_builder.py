@@ -4,9 +4,7 @@ import numpy as np
 import sys
 import time
 import torch
-from torch.utils.tensorboard import SummaryWriter
 import utils
-
 
 class ExperimentBuilder(object):
     def __init__(self, args, data, model):
@@ -22,7 +20,9 @@ class ExperimentBuilder(object):
         self.device = torch.device('cuda') if args.cuda else torch.device('cpu')
 
         # Tensorboard setup
-        if self.args.mode != 'test':
+        self.use_tensorboard = (self.args.mode != 'test') and (self.args.model != 'dain')
+        if self.use_tensorboard:
+            from torch.utils.tensorboard import SummaryWriter
             self.writer = SummaryWriter('logs/%s' % self.args.exp_name)
 
         self.model = model
@@ -102,7 +102,8 @@ class ExperimentBuilder(object):
 
         def _eval_iter(frames):
             H, W = frames[0].shape[-2:]
-            if H * W > 5e5:
+            if H * W > 5e5 or (self.args.model == 'rrin' and H * W > 3e5): # or (self.args.model == 'dain' and H * W > 1e5):
+                print(H, W)
                 if H > W:
                     images_0 = [im[:, :, :H//2, :] for im in frames]
                     images_1 = [im[:, :, H//2:, :] for im in frames]
@@ -117,16 +118,27 @@ class ExperimentBuilder(object):
                     losses[k] = (v + losses[k]) / 2
                     if k == 'loss':
                         losses[k] = losses[k].detach()
-                metrics = metrics_0
-                for k, v in metrics_1.items():
-                    metrics[k].update(val=v.avg, n=v.count)
-                del losses_0, losses_1, outputs_0, outputs_1, metrics_0, metrics_1
+                #metrics = metrics_0
+                #for k, v in metrics_1.items():
+                #    metrics[k].update(val=v.avg, n=v.count)
+                del losses_0, losses_1, outputs_0, outputs_1#, metrics_0, metrics_1
             else:
                 losses, outputs, metrics = self.model.run_validation_iter(data_batch=frames)
                 losses['loss'] = losses['loss'].detach()
-            return losses, outputs, metrics
+            return losses, outputs, None#metrics
 
-        losses, outputs, metrics = _eval_iter(images)
+        losses, outputs, _ = _eval_iter(images)
+
+        output = outputs[0].squeeze(0).detach()
+        target = images[3][0].detach().cuda()
+        if self.args.model == 'voxelflow':
+            target = (target * self.model.std + self.model.mean) / 255.0
+        elif self.args.model == 'superslomo':
+            target = self.model.revNormalize(target)
+        metrics = {'psnr': utils.AverageMeter(), 'ssim': utils.AverageMeter()}
+        psnr, ssim = utils.calc_metrics(output, target)
+        metrics['psnr'].update(psnr)
+        metrics['ssim'].update(ssim)
 
         val_output_update = self.build_loss_summary_string(losses, metrics)
 
@@ -163,12 +175,6 @@ class ExperimentBuilder(object):
 
         return outputs
 
-
-    def evaluate_middlebury(self):
-        """
-        Runs evaluation on Middlebury dataset
-        """
-        return 0
 
 
     def run_experiment(self):
@@ -252,7 +258,7 @@ class ExperimentBuilder(object):
                         do_evaluation=(self.state['current_iter'] % self.args.eval_iter == 0))
 
                     # Log to Tensorboard
-                    if self.state['current_iter'] % self.args.log_iter == 1:
+                    if self.state['current_iter'] % self.args.log_iter == 1 and self.use_tensorboard:
                         utils.log_tensorboard(self.writer, train_losses, metrics['psnr'].avg, metrics['ssim'].avg, None,
                             self.model.optimizer.param_groups[0]['lr'], self.state['current_iter'], mode='train')
 
@@ -290,8 +296,9 @@ class ExperimentBuilder(object):
                         print("validation PSNR: %.2f,  SSIM: %.4f\n" % (metrics_accumulator['psnr'].avg, metrics_accumulator['ssim'].avg))
 
                         # log to TensorBoard
-                        utils.log_tensorboard(self.writer, val_losses, metrics_accumulator['psnr'].avg, metrics_accumulator['ssim'].avg, None,
-                            self.model.optimizer.param_groups[0]['lr'], self.state['current_iter'], mode='val')
+                        if self.use_tensorboard:
+                            utils.log_tensorboard(self.writer, val_losses, metrics_accumulator['psnr'].avg, metrics_accumulator['ssim'].avg, None,
+                                self.model.optimizer.param_groups[0]['lr'], self.state['current_iter'], mode='val')
 
                         self.epoch += 1
 

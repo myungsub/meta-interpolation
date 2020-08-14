@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from .unet import UNet, MetaUNet
-from model_utils import extract_top_level_dict
+from model_utils import extract_top_level_dict, InOutPaddings
 
 def warp(img, flow):
     _, _, H, W = img.size()
@@ -106,6 +106,11 @@ class MetaRRIN(nn.Module):
 
     def forward(self, input0, input1, t=0.5, params=None, **kwargs):
 
+        if True:
+            paddingInput, paddingOutput = InOutPaddings(input0)
+            input0 = paddingInput(input0)
+            input1 = paddingInput(input1)
+
         param_dict = dict()
         if params is not None:
             param_dict = extract_top_level_dict(current_dict=params)
@@ -118,6 +123,9 @@ class MetaRRIN(nn.Module):
             compose = torch.cat((input0, input1, output),1)
             final = self.final(compose)+output
             final = final.clamp(0,1)
+
+        if True:
+            final = paddingOutput(final)
 
         return final
 

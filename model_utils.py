@@ -478,7 +478,7 @@ class MetaBatchNormLayer(nn.Module):
 
         self.momentum = momentum
 
-    def forward(self, input, num_step, params=None, training=False, backup_running_statistics=False):
+    def forward(self, input, num_step=1, params=None, training=False, backup_running_statistics=False):
         """
         Forward propagates by applying a bach norm function. If params are none then internal params are used.
         Otherwise passed params will be used to execute the function.

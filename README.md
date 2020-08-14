@@ -19,6 +19,8 @@ Source code for CVPR 2020 paper "Scene-Adaptive Video Frame Interpolation via Me
 - cupy==7.3 (recommended: `conda install cupy -c conda-forge`)
 - tqdm==4.44.1
 
+For [[DAIN](https://github.com/baowenbo/DAIN)], the environment is different; please check `dain/dain_env.yml` for the requirements.
+
 
 ## Usage
 
@@ -54,6 +56,7 @@ Source code for CVPR 2020 paper "Scene-Adaptive Video Frame Interpolation via Me
     - For [SepConv](https://github.com/sniklaus/sepconv-slomo), `--model` should be `sepconv`, and `--loss` should be `1*L1`
     - For [VoxelFlow](https://github.com/lxx1991), `--model` should be `voxelflow`, and `--loss` should be `1*MSE`
     - For [SuperSloMo](https://github.com/avinashpaliwal/Super-SloMo),  `--model` should be `superslomo`, `--loss` should be `1*Super`
+    - For [DAIN](https://github.com/baowenbo/DAIN), `--model` should be `dain`, and `--loss` should be `1*L1`
     - For [CAIN](https://github.com/myungsub/CAIN), `--model` should be `cain`, and `--loss` should be `1*L1`
     - For [RRIN](https://github.com/HopLee6/RRIN), '`--model` should be `rrin`, and `--loss` should be `1*L1`
 
@@ -63,7 +66,7 @@ Source code for CVPR 2020 paper "Scene-Adaptive Video Frame Interpolation via Me
 - Current code supports using more advanced meta-learning algorithms compared to vanilla MAML, *e.g.* [MAML++](https://github.com/AntreasAntoniou/HowToTrainYourMAMLPytorch), [L2F](https://github.com/baiksung/L2F), or [Meta-SGD](https://arxiv.org/abs/1707.09835).
   - For MAML++ you can explore many different hyperparameters by adding additional options (see `config.py`)
   - For L2F, just uncomment `--attenuate` in `scripts/run_{VFI_MODEL_NAME}.sh`
-  - For Meta-SGD, just uncomment `--metasgd` (This seems to have the best performance!)
+  - For Meta-SGD, just uncomment `--metasgd` (This usually results in the best performance!)
 
 ### Framework Overview
 
